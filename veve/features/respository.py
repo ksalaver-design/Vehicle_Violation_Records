@@ -67,10 +67,10 @@ class VehicleRepository:
                 driver = Driver(
                     licensenum=row[0] or "",
                     drivername=row[1] or "",
-                    has_license=bool(row[2]),
-                    phone=row[3] or "",
-                    email=row[4] or "",
-                    sex=row[5] or ""
+                    has_license=bool(row[2]), 
+                    phone=row[3] or "",        
+                    email=row[4] or "",        
+                    sex=row[5] or ""   
                 )
                 
                 raw_violations = row[8].split(",") if row[8] else []
