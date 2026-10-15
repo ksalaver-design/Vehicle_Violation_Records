@@ -169,14 +169,17 @@ class VehicleView(QWidget):
         main_layout.addLayout(button_layout)
         
         # --- Results Table ---
-        self.table = QTableWidget(0, 11)
+        self.table = QTableWidget(0, 10)
         self.table.setHorizontalHeaderLabels([
-            "Has License", "License No / ID", "Driver Name", "Phone No", "Email", "Sex", "Plate Num", "Vehicle Type", "Violations Charged", "Fine ($)", "Date Created"
+            "License No / ID", "Driver Name", "Phone No", "Email", "Sex", "Plate Num", "Vehicle Type", "Violations Charged", "Fine ($)", "Date Created"
         ])
         
+        # Make table cells non-editable
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
         
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -208,34 +211,28 @@ class VehicleView(QWidget):
         email = self.email_input.text().strip()
         phone = self.phone_input.text().strip()
 
-        # 1. Driver Name Validation
         if not driver_name:
             raise ValueError("Driver Name cannot be empty.")
 
-        # 2. Driver Email Validation
         if not email:
             raise ValueError("Driver Email cannot be empty.")
         elif not re.match(EMAIL_REGEX, email):
             raise ValueError("Invalid email format (e.g. driver@example.com).")
 
-        # 3. Contact Phone Validation (if provided)
         if phone and not re.match(PHONE_REGEX, phone):
             raise ValueError("Invalid contact phone format (e.g. 09123456789 or +639123456789).")
 
-        # 4. License Number Validation
         if has_lic:
             if not license_num:
                 raise ValueError("License Number is required for licensed drivers.")
             elif not re.match(LICENSE_REGEX, license_num):
                 raise ValueError("Invalid License Number format (e.g. A01-23-456789).")
 
-        # 5. Plate Number Validation
         if not plate_num:
             raise ValueError("Plate Number cannot be empty.")
         elif not re.match(PLATE_REGEX, plate_num):
             raise ValueError("Invalid Plate Number format (e.g. ABC 1234 or AB 123).")
 
-        # 6. Violations Check
         violations = []
         for v_name, widgets in self.violation_widgets.items():
             if widgets["chk_item"].checkState() == Qt.CheckState.Checked:
@@ -304,7 +301,7 @@ class VehicleView(QWidget):
             return
 
         row = selected_rows[0].row()
-        platenum = self.table.item(row, 6).text()
+        platenum = self.table.item(row, 5).text()
 
         confirm = QMessageBox.question(
             self,
@@ -327,32 +324,33 @@ class VehicleView(QWidget):
             return
 
         row = selected_rows[0].row()
-        items = [self.table.item(row, col) for col in range(11)]
+        items = [self.table.item(row, col) for col in range(10)]
 
         if all(items):
-            is_licensed = items[0].text() == "Yes"
+            lic_num = items[0].text()
+            is_licensed = not lic_num.startswith("UNLICENSED-")
             self.has_license_checkbox.setChecked(is_licensed)
             
             if is_licensed:
-                self.license_input.setText(items[1].text())
+                self.license_input.setText(lic_num)
             else:
                 self.license_input.clear()
 
-            self.name_input.setText(items[2].text())
-            self.phone_input.setText(items[3].text())
-            self.email_input.setText(items[4].text())
+            self.name_input.setText(items[1].text())
+            self.phone_input.setText(items[2].text())
+            self.email_input.setText(items[3].text())
 
-            sex_idx = self.sex_input.findText(items[5].text())
+            sex_idx = self.sex_input.findText(items[4].text())
             if sex_idx >= 0:
                 self.sex_input.setCurrentIndex(sex_idx)
 
-            self.plate_input.setText(items[6].text())
+            self.plate_input.setText(items[5].text())
 
-            type_idx = self.type_input.findText(items[7].text())
+            type_idx = self.type_input.findText(items[6].text())
             if type_idx >= 0:
                 self.type_input.setCurrentIndex(type_idx)
 
-            raw_violations = items[8].text().split(",")
+            raw_violations = items[7].text().split(",")
             charged_list = [v.strip() for v in raw_violations]
 
             self.violation_table.blockSignals(True)
@@ -408,7 +406,6 @@ class VehicleView(QWidget):
         for row, rec in enumerate(records):
             violations_text = ", ".join(rec.violation.violations) if rec.violation.violations else "None"
             values = [
-                "Yes" if rec.driver.has_license else "No",
                 rec.driver.licensenum,
                 rec.driver.drivername,
                 rec.driver.phone,
