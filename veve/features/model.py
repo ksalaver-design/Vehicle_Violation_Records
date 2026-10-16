@@ -18,6 +18,7 @@ class Violation:
     violations: List[str]
     fine: float
     date_created: str = ""
+    id: int = None
 
 @dataclass
 class VehicleRecord:
