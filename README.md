@@ -105,13 +105,17 @@ Main Application
 
 Shows the dual-column input layout (Driver Identification & Citation Details), multi-select check list, and the primary 11-column table.
 
-<img width="1177" height="742" alt="Image" src="https://github.com/user-attachments/assets/6d9d7d18-690b-4bd6-a992-bc8938762f1b" />
+<img width="1172" height="738" alt="image" src="https://github.com/user-attachments/assets/f8684637-c894-4020-99b4-9d8fbf4d13f7" />
 
 Search View Tab
 
 Demonstrates dynamic record filtering as the user types queries in the search bar.
 
 <img width="1176" height="742" alt="Image" src="https://github.com/user-attachments/assets/fce1e016-f118-45ef-9cd7-600133bcd0a4" />
+
+Generate a Ticket after selecting a table
+
+<img width="1173" height="742" alt="Screenshot 2026-10-15 231958" src="https://github.com/user-attachments/assets/83539c31-f2f5-49bd-afd3-7e06690829ad" />
 
 🧪 Testing & Verification
 
@@ -125,11 +129,35 @@ Demonstrates dynamic record filtering as the user types queries in the search ba
 | Delete Record | Select row, click "Delete Selected" & confirm | Citation deleted from table and violations database table. | Passed |
 | Dynamic Search | Type plate segment into Search field | Results instantly filtered down to matching rows in real time. | Passed |
 
+# Vehicle-Violation-Records
+
+## Database Schema
+
+### `drivers` Table
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `licensenum` | `TEXT` | `PRIMARY KEY` | Driver's license number |
+| `drivername` | `TEXT` | None | Full name of the driver |
+| `has_license` | `BOOLEAN` | None | Flag indicating if the driver has a valid license |
+| `phone` | `TEXT` | None | Contact phone number |
+| `email` | `TEXT` | None | Contact email address |
+| `sex` | `TEXT` | None | Gender/sex of the driver |
+
+### `violations` Table
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `INTEGER` | `PRIMARY KEY AUTOINCREMENT` | Unique identifier for each violation record |
+| `platenum` | `TEXT` | None | Vehicle license plate number |
+| `licensenum` | `TEXT` | `FOREIGN KEY` | Reference to `drivers(licensenum)` |
+| `vehicletype` | `TEXT` | None | Type of vehicle involved in the violation |
+| `violations` | `TEXT` | None | Details/description of the violation(s) |
+| `fine` | `REAL` | None | Fine amount for the violation |
+| `date_created` | `TEXT` | None | Timestamp/date when the record was created |
+
 
 ⚠️ Known Limitations
 
-- Registered Vehicle not fully implementing
-- Violation Fine Filter not fully implementing
+- Drivers Information not fully implementing
 
 👤 Author
 
