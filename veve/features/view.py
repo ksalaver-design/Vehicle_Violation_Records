@@ -166,6 +166,10 @@ class VehicleView(QWidget):
         delete_button.clicked.connect(self.delete_vehicle)
         button_layout.addWidget(delete_button)
 
+        clear_button = QPushButton("Clear Form")
+        clear_button.clicked.connect(self.clear_inputs)
+        button_layout.addWidget(clear_button)
+
         main_layout.addLayout(button_layout)
         
         # --- Results Table ---
@@ -203,7 +207,42 @@ class VehicleView(QWidget):
         else:
             self.license_input.setPlaceholderText("e.g. A01-23-456789")
 
-    def get_input_record(self) -> VehicleRecord:
+    def clear_inputs(self) -> None:
+        # Temporarily disconnect selection listener to avoid auto-filling during clear
+        try:
+            self.table.itemSelectionChanged.disconnect(self.on_row_selected)
+        except TypeError:
+            pass
+
+        # Deselect any highlighted row in the main table
+        self.table.clearSelection()
+
+        # Reset Person Identification inputs
+        self.has_license_checkbox.setChecked(True)
+        self.license_input.clear()
+        self.name_input.clear()
+        self.phone_input.clear()
+        self.email_input.clear()
+        self.sex_input.setCurrentIndex(0)
+
+        # Reset Vehicle Details inputs
+        self.plate_input.clear()
+        self.type_input.setCurrentIndex(0)
+
+        # Uncheck all violation items and reset offense level combos
+        self.violation_table.blockSignals(True)
+        for widgets in self.violation_widgets.values():
+            widgets["chk_item"].setCheckState(Qt.CheckState.Unchecked)
+            widgets["combo"].setCurrentIndex(0)
+        self.violation_table.blockSignals(False)
+
+        # Reset total fine calculation
+        self.fine_input.setText("0.00")
+
+        # Re-connect selection listener
+        self.table.itemSelectionChanged.connect(self.on_row_selected)
+
+    def get_input_record(self, record_id: int = None) -> VehicleRecord:
         driver_name = self.name_input.text().strip()
         has_lic = self.has_license_checkbox.isChecked()
         license_num = self.license_input.text().strip()
@@ -211,27 +250,18 @@ class VehicleView(QWidget):
         email = self.email_input.text().strip()
         phone = self.phone_input.text().strip()
 
+        # Validation checks...
         if not driver_name:
             raise ValueError("Driver Name cannot be empty.")
-
-        if not email:
-            raise ValueError("Driver Email cannot be empty.")
-        elif not re.match(EMAIL_REGEX, email):
-            raise ValueError("Invalid email format (e.g. driver@example.com).")
-
+        if not email or not re.match(EMAIL_REGEX, email):
+            raise ValueError("Invalid email format.")
         if phone and not re.match(PHONE_REGEX, phone):
-            raise ValueError("Invalid contact phone format (e.g. 09123456789 or +639123456789).")
-
+            raise ValueError("Invalid contact phone format.")
         if has_lic:
-            if not license_num:
-                raise ValueError("License Number is required for licensed drivers.")
-            elif not re.match(LICENSE_REGEX, license_num):
-                raise ValueError("Invalid License Number format (e.g. A01-23-456789).")
-
-        if not plate_num:
-            raise ValueError("Plate Number cannot be empty.")
-        elif not re.match(PLATE_REGEX, plate_num):
-            raise ValueError("Invalid Plate Number format (e.g. ABC 1234 or AB 123).")
+            if not license_num or not re.match(LICENSE_REGEX, license_num):
+                raise ValueError("Invalid License Number format.")
+        if not plate_num or not re.match(PLATE_REGEX, plate_num):
+            raise ValueError("Invalid Plate Number format.")
 
         violations = []
         for v_name, widgets in self.violation_widgets.items():
@@ -244,9 +274,10 @@ class VehicleView(QWidget):
             raise ValueError("Please check at least one violation charge.")
 
         fine_val = float(self.fine_input.text())
+        lic_id = license_num.upper() if has_lic else f"UNLICENSED-{plate_num.upper()}"
 
         driver = Driver(
-            licensenum=license_num.upper() if has_lic else f"UNLICENSED-{plate_num.upper()}",
+            licensenum=lic_id,
             drivername=driver_name,
             has_license=has_lic,
             phone=phone,
@@ -262,7 +293,8 @@ class VehicleView(QWidget):
             vehicletype=self.type_input.currentText(),
             violations=violations,
             fine=fine_val,
-            date_created=current_timestamp
+            date_created=current_timestamp,
+            id=record_id
         )
 
         return VehicleRecord(driver=driver, violation=violation)
@@ -301,18 +333,19 @@ class VehicleView(QWidget):
             return
 
         row = selected_rows[0].row()
+        record_id = int(self.table.item(row, 0).data(Qt.ItemDataRole.UserRole))
         platenum = self.table.item(row, 5).text()
 
         confirm = QMessageBox.question(
             self,
             "Confirm Delete",
-            f"Are you sure you want to delete the record for plate number '{platenum}'?",
+            f"Are you sure you want to delete violation record #{record_id} for plate '{platenum}'?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 
         if confirm == QMessageBox.StandardButton.Yes:
             try:
-                self.service.delete_vehicle(platenum)
+                self.service.delete_vehicle(record_id)
                 self.refresh()
                 self.clear_inputs()
             except Exception as err:
