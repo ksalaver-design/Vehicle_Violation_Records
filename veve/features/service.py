@@ -15,5 +15,8 @@ class VehicleService:
     def get_Vehicle(self) -> list[VehicleRecord]:
         return self.repository.list()
 
-    def delete_vehicle(self, platenum: str) -> None:
-        self.repository.delete(platenum)
+    def delete_vehicle(self, record_id: int) -> None:
+        self.repository.delete_by_id(record_id)
+
+    def get_driver_offense_count(self, licensenum: str) -> int:
+        return self.repository.get_offense_count_by_driver(licensenum)
