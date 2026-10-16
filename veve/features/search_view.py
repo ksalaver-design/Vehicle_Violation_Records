@@ -11,7 +11,8 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QLabel,
     QDialog,
-    QFrame
+    QFrame,
+    QMessageBox
 )
 from .service import VehicleService
 
@@ -131,18 +132,30 @@ class SearchVehicleView(QWidget):
         layout.addLayout(search_layout)
 
         # --- Search Results Table ---
-        self.table = QTableWidget(0, 10)
+        self.table = QTableWidget(0, 9)
         self.table.setHorizontalHeaderLabels([
-            "Has License", "License No / ID", "Driver Name", "Phone No", "Email", "Sex", "Plate Num", "Vehicle Type", "Violations Charged", "Fine ($)"
+            "License No / ID", "Driver Name", "Phone No", "Email", "Sex", "Plate Num", "Vehicle Type", "Violations Charged", "Fine ($)"
         ])
+        
+        # Make table cells non-editable
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
 
-        # Show GUI ticket dialog when row selection changes
-        self.table.itemSelectionChanged.connect(self.show_ticket)
-
         layout.addWidget(self.table)
+
+        # --- Generate Ticket Action Button ---
+        action_layout = QHBoxLayout()
+        action_layout.addStretch()
+        
+        generate_btn = QPushButton("Generate Ticket")
+        generate_btn.setStyleSheet("font-weight: bold; padding: 6px 16px;")
+        generate_btn.clicked.connect(self.show_ticket)
+        action_layout.addWidget(generate_btn)
+
+        layout.addLayout(action_layout)
 
     def clear_search(self) -> None:
         self.search_input.clear()
@@ -151,21 +164,23 @@ class SearchVehicleView(QWidget):
     def show_ticket(self) -> None:
         selected_rows = self.table.selectedItems()
         if not selected_rows:
+            QMessageBox.warning(self, "Selection Required", "Please select a vehicle record from the table to generate a ticket.")
             return
 
         row = selected_rows[0].row()
+        lic_num = self.table.item(row, 0).text()
 
         ticket_data = {
-            "has_license": self.table.item(row, 0).text(),
-            "license_num": self.table.item(row, 1).text(),
-            "driver_name": self.table.item(row, 2).text(),
-            "phone": self.table.item(row, 3).text(),
-            "email": self.table.item(row, 4).text(),
-            "sex": self.table.item(row, 5).text(),
-            "plate_num": self.table.item(row, 6).text(),
-            "vehicle_type": self.table.item(row, 7).text(),
-            "violations": self.table.item(row, 8).text(),
-            "fine": self.table.item(row, 9).text()
+            "has_license": "No" if lic_num.startswith("UNLICENSED-") else "Yes",
+            "license_num": lic_num,
+            "driver_name": self.table.item(row, 1).text(),
+            "phone": self.table.item(row, 2).text(),
+            "email": self.table.item(row, 3).text(),
+            "sex": self.table.item(row, 4).text(),
+            "plate_num": self.table.item(row, 5).text(),
+            "vehicle_type": self.table.item(row, 6).text(),
+            "violations": self.table.item(row, 7).text(),
+            "fine": self.table.item(row, 8).text()
         }
 
         # Open pure PyQt6 GUI dialog
@@ -173,11 +188,6 @@ class SearchVehicleView(QWidget):
         dialog.exec()
 
     def refresh(self) -> None:
-        try:
-            self.table.itemSelectionChanged.disconnect(self.show_ticket)
-        except TypeError:
-            pass
-
         query = self.search_input.text().strip().lower()
         records = self.service.get_Vehicle()
         
@@ -197,7 +207,6 @@ class SearchVehicleView(QWidget):
         for row, rec in enumerate(filtered_records):
             violations_text = ", ".join(rec.violation.violations) if rec.violation.violations else "None"
             values = [
-                "Yes" if rec.driver.has_license else "No",
                 rec.driver.licensenum,
                 rec.driver.drivername,
                 rec.driver.phone,
@@ -210,5 +219,3 @@ class SearchVehicleView(QWidget):
             ]
             for column, value in enumerate(values):
                 self.table.setItem(row, column, QTableWidgetItem(str(value)))
-
-        self.table.itemSelectionChanged.connect(self.show_ticket)
