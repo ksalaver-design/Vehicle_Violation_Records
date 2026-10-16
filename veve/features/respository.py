@@ -7,6 +7,13 @@ class VehicleRepository:
     def __init__(self, db: Database):
         self.db = db
 
+    def get_offense_count_by_driver(self, licensenum: str) -> int:
+        """Returns the total number of past violation records for a specific driver."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM violations WHERE licensenum = ?", (licensenum,))
+            return cursor.fetchone()[0] or 0
+
     def add(self, record: VehicleRecord) -> None:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
@@ -56,9 +63,10 @@ class VehicleRepository:
                 """
                 SELECT 
                     d.licensenum, d.drivername, d.has_license, d.phone, d.email, d.sex,
-                    v.platenum, v.vehicletype, v.violations, v.fine, v.date_created
+                    v.platenum, v.vehicletype, v.violations, v.fine, v.date_created, v.id
                 FROM violations v
                 LEFT JOIN drivers d ON v.licensenum = d.licensenum
+                ORDER BY v.id DESC
                 """
             )
             rows = cursor.fetchall()
@@ -82,7 +90,8 @@ class VehicleRepository:
                     vehicletype=row[7] or "",
                     violations=violations_list,
                     fine=float(row[9] or 0.0),
-                    date_created=row[10] or ""
+                    date_created=row[10] or "",
+                    id=row[11]
                 )
                 records.append(VehicleRecord(driver=driver, violation=violation))
                 
@@ -111,21 +120,22 @@ class VehicleRepository:
             cursor.execute(
                 """
                 UPDATE violations 
-                SET licensenum=?, vehicletype=?, violations=?, fine=?
-                WHERE platenum=?
+                SET platenum=?, licensenum=?, vehicletype=?, violations=?, fine=?
+                WHERE id=?
                 """,
                 (
+                    record.violation.platenum,
                     record.violation.licensenum,
                     record.violation.vehicletype,
                     violations_str,
                     record.violation.fine,
-                    record.violation.platenum,
+                    record.violation.id,
                 )
             )
             conn.commit()
 
-    def delete(self, platenum: str) -> None:
+    def delete_by_id(self, record_id: int) -> None:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM violations WHERE platenum = ?", (platenum,))
+            cursor.execute("DELETE FROM violations WHERE id = ?", (record_id,))
             conn.commit()
