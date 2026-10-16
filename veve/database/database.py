@@ -1,5 +1,4 @@
 import sqlite3
-
 class Database:
     def __init__(self, db_name: str = "vehicle_violations.db"):
         self.db_name = db_name
@@ -23,7 +22,8 @@ class Database:
             """)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS violations (
-                    platenum TEXT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    platenum TEXT,
                     licensenum TEXT,
                     vehicletype TEXT,
                     violations TEXT,
